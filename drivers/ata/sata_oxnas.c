@@ -3,6 +3,7 @@
 #include <linux/of_platform.h>
 #include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/leds.h>
 #include <linux/slab.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
@@ -316,6 +317,82 @@ static void sata_oxnas_tf_load(struct ata_port *ap, const struct ata_taskfile *t
 static void sata_oxnas_irq_on(struct ata_port *ap);
 static void sata_oxnas_post_reset_init(struct ata_port* ap);
 
+/***************************************************************************
+* LED code
+***************************************************************************/
+#ifdef CONFIG_LEDS_TRIGGERS
+static struct led_classdev* ox820_disklight_led = NULL;
+static struct timer_list disklight_timer;
+static unsigned long disklight_delay;
+#endif
+
+static inline void ox820_disklight_led_turn_on(void)
+{
+#ifdef CONFIG_LEDS_TRIGGERS
+	struct led_classdev* ox820_disklight = ox820_disklight_led;
+	
+	if(NULL != ox820_disklight) {
+		mod_timer(&disklight_timer, jiffies + disklight_delay);
+		led_set_brightness(ox820_disklight, ox820_disklight->max_brightness);
+	}
+#endif
+}
+
+static inline void ox820_disklight_led_turn_off(void)
+{
+}
+
+#ifdef CONFIG_LEDS_TRIGGERS
+static void disklight_function(unsigned long data)
+{
+	struct led_classdev* ox820_disklight = ox820_disklight_led;
+
+	if(NULL != ox820_disklight) {
+		led_set_brightness(ox820_disklight, LED_OFF);
+	}
+}
+
+static void ox820_disklight_trig_activate(struct led_classdev* led_cdev)
+{
+	ox820_disklight_led = led_cdev;
+}
+
+static void ox820_disklight_trig_deactivate(struct led_classdev* led_cdev)
+{
+	ox820_disklight_led = NULL;
+}
+
+static struct led_trigger ox820_disklight_led_trigger = {
+	.name     = "satadisk",
+	.activate = ox820_disklight_trig_activate,
+	.deactivate = ox820_disklight_trig_deactivate,
+};
+#endif
+
+static int ox820_disklight_led_register(void)
+{
+#ifdef CONFIG_LEDS_TRIGGERS
+	int ret;
+	disklight_delay = msecs_to_jiffies(50);
+	ret = led_trigger_register(&ox820_disklight_led_trigger);
+	if(0 == ret) {
+		setup_timer(&disklight_timer, disklight_function, 0);
+	}
+	return ret;
+#else
+	return 0;
+#endif
+}
+
+static void ox820_disklight_led_unregister(void)
+{
+#ifdef CONFIG_LEDS_TRIGGERS
+	del_timer_sync(&disklight_timer);
+	led_trigger_unregister(&ox820_disklight_led_trigger);
+#endif
+}
+
+
 /* ??????????????????????????????????? */
 static void wait_cr_ack(void __iomem *phy_base){
 	while ((ioread32(phy_base + PHY_STAT) >> 16) & 0x1f)
@@ -471,6 +548,8 @@ static unsigned int sata_oxnas_qc_issue(struct ata_queued_cmd *qc)
 	void __iomem *core_base = pd->core_base;
 	int port_no = qc->ap->port_no;
 	u32 reg;
+
+	ox820_disklight_led_turn_on();
 
 	/* check the core is idle */
 	if (ioread32(port_base + SATA_COMMAND) & CMD_CORE_BUSY)
@@ -1618,6 +1697,7 @@ static irqreturn_t sata_oxnas_interrupt(int irq, void *dev_instance)
 		}
 	}
 
+	ox820_disklight_led_turn_off();
 	return ret;
 }
 
@@ -1869,7 +1949,43 @@ static struct platform_driver oxnas_sata_driver = {
 #endif
 };
 
-module_platform_driver(oxnas_sata_driver);
+/** 
+ * module initialisation
+ * @return success
+ */
+static int __init ox820sata_init_driver( void )
+{
+    int ret, aborted_at = 0;
+	ret = ox820_disklight_led_register();
+	if(0 == ret) {
+		ret = platform_driver_register( &oxnas_sata_driver );
+		if(0 != ret) {
+			ox820_disklight_led_unregister();
+		}
+	}
+    DPRINTK(" %i\n", ret);
+    return ret; 
+}
+
+
+/** 
+ * module cleanup
+ */
+static void __exit ox820sata_exit_driver( void )
+{
+    platform_driver_unregister( &oxnas_sata_driver );
+    ox820_disklight_led_unregister();
+}
+
+/** 
+ * macros to register intiialisation and exit functions with kernal
+ */
+
+module_init(ox820sata_init_driver);
+module_exit(ox820sata_exit_driver);
+
+
+/* module_platform_driver(oxnas_sata_driver);  */
 
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0");
