@@ -148,6 +148,74 @@ static int __init ox820_ether_init(void)
 	return 0;
 }
 
+static void force_to_low_power(void)
+{
+#ifdef CONFIG_PCI
+printk(KERN_INFO "Powering down PCIe\n");
+	// Ensure the PCIe core clock is running so register accesses work
+	writel((1UL << SYS_CTRL_CLK_PCIEA) |
+		   (1UL << SYS_CTRL_CLK_PCIEB), SYS_CTRL_CLK_SET_CTRL);
+
+	// Put core into reset and PHY into minimum power state
+	writel((1UL << SYS_CTRL_RST_PCIEA) |
+		   (1UL << SYS_CTRL_RST_PCIEB) |
+		   (1UL << SYS_CTRL_RST_PCIEPHY), SYS_CTRL_RST_SET_CTRL);
+
+	// Stop clock
+	writel((1UL << SYS_CTRL_CLK_PCIEA) |
+		   (1UL << SYS_CTRL_CLK_PCIEB), SYS_CTRL_CLK_CLR_CTRL);
+#endif // CONFIG_PCI
+
+	printk(KERN_INFO "Powering down SATA\n");
+	// Ensure the SATA core clock is running so register accesses work
+	writel((1UL << SYS_CTRL_CLK_SATA), SYS_CTRL_CLK_SET_CTRL);
+
+	// Put core into reset and PHY into minimum power state
+	writel((1UL << SYS_CTRL_RST_SATA) |
+		   (1UL << SYS_CTRL_RST_SATA_LINK) |
+		   (1UL << SYS_CTRL_RST_SATA_PHY), SYS_CTRL_RST_SET_CTRL);
+
+	// Stop clock
+	writel((1UL << SYS_CTRL_CLK_SATA), SYS_CTRL_CLK_CLR_CTRL);
+#if defined(CONFIG_USB) || defined(CONFIG_USB_MODULE)
+	printk(KERN_INFO "Powering down USB\n");
+	// Ensure the USB host and device core clocks are running so register accesses work
+	writel((1UL << SYS_CTRL_CLK_USBHS) |
+		   (1UL << SYS_CTRL_CLK_USBDEV), SYS_CTRL_CLK_SET_CTRL);
+
+	// Put PHY into minimum power state
+	writel((1UL << USBHSPHY_SUSPENDM_MANUAL_ENABLE) |
+		   (1UL << USBHSPHY_SUSPENDM_MANUAL_STATE) |
+		   (1UL << USBHSPHY_ATE_ESET), SYS_CTRL_USBHSPHY_CTRL); 
+
+	// Put core into reset
+	writel((1UL << SYS_CTRL_RST_USBHS) |
+		   (1UL << SYS_CTRL_RST_USBHSPHYA) |
+		   (1UL << SYS_CTRL_RST_USBHSPHYB) |
+		   (1UL << SYS_CTRL_RST_USBDEV), SYS_CTRL_RST_SET_CTRL);
+
+	// Stop clock
+	writel((1UL << SYS_CTRL_CLK_USBHS) |
+		   (1UL << SYS_CTRL_CLK_USBDEV), SYS_CTRL_CLK_CLR_CTRL);
+#endif // CONFIG_USB || CONFIG_USB_MODULE
+}
+
+//#define GPIO_B_BASE                   OXNAS_HW_PA_TO_VA(0x04100000)
+//#define GPIO_B_OUTPUT_CLEAR                   (GPIO_B_BASE + 0x0018)
+//#define GPIO_B_OUTPUT_ENABLE_SET              (GPIO_B_BASE + 0x001C)
+
+static void arch_poweroff(void)
+{
+    int gpio_power_off_mask = 1 << 16;
+    // Put various cores whose drivers are built into the kernel into low power
+    force_to_low_power();
+
+    // now power down completely
+//    writel(gpio_power_off_mask, GPIO_B_OUTPUT_CLEAR);
+//    writel(gpio_power_off_mask, GPIO_B_OUTPUT_ENABLE_SET);
+}
+
+
 static void __init ox820_dt_init(void)
 {
         int ret;
@@ -164,6 +232,7 @@ static void __init ox820_dt_init(void)
         if (ret) {
                 pr_info("ox820_ether_init failed: %d\n", ret);
         }
+	pm_power_off = arch_poweroff;
 }
 
 static void __init ox820_timer_init(void)
