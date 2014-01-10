@@ -1,0 +1,108 @@
+/*
+ * Copyright (C) 2013 Ma Haijun <mahaijuns@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+#include "ox820.dtsi"
+
+/ {
+	model = "Iomega Home Media Network Hard Drive, Cloud Edition";
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8 root=/dev/sda1 rootfstype=ext4";
+	};
+
+	uart@44200000 {
+		status = "okay";
+	};
+
+	sata@45900000 {
+		status = "okay";
+	};
+
+	ethernet@40400000 {
+		status = "okay";
+	};
+
+	ehci@40200100 {
+		status = "okay";
+	};
+
+	pinctrl {
+		leds {
+			pinctrl_leds: leds-0 {
+				plxtech,pins =
+					<0 7 0 0	/* MF_A7 */
+					 0 8 0 0	/* MF_A8 */
+					 0 11 0 0	/* MF_A11 */
+					 0 25 0 0	/* MF_A25 */
+					 0 28 0 0>;	/* MF_A28 */
+			};
+		};
+		keys {
+			pinctrl_keys: keys-0 {
+				plxtech,pins =
+					<0 5 0 0	/* MF_A5 */
+					 1 11 0 0	/* MF_B11 */
+					 0 6 0 0>;	/* MF_A6 */
+			};
+		};
+	};
+	gpio-keys {
+		compatible = "gpio-keys-polled";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_keys>;
+		poll-interval = <100>;
+		reset {
+			label = "reset";
+			gpios = <&GPIOA 5 1>;
+			linux,code = <0x198>;
+		};
+		power {
+			label = "power";
+			gpios = <&GPIOB 11 1>;
+			linux,code = <0x74>;
+		};
+		copy {
+			label = "copy";
+			gpios = <&GPIOA 6 1>;
+			linux,code = <0x85>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_leds>;
+
+		statuspower {
+			label = "status:misc:power";
+			gpios = <&GPIOA 7 0>;
+			default-state = "on";
+		};
+		statussysng {
+			label = "status:system:ng";
+			gpios = <&GPIOA 8 0>;
+			default-state = "off";
+		};
+		statussysok {
+			label = "status:system:ok";
+			gpios = <&GPIOA 25 0>;
+			default-state = "off";
+		};
+		statushdd {
+			label = "status:hdd:blue";
+			gpios = <&GPIOA 11 0>;
+			linux,default-trigger = "satadisk";
+		};
+		statusotb {
+			label = "status:misc:otb";
+			gpios = <&GPIOA 28 0>;
+			default-state = "off";
+		};
+	};
+};
