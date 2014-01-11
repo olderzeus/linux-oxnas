@@ -26,7 +26,6 @@
 #include <linux/pinctrl/pinmux.h>
 /* Since we request GPIOs from ourself */
 #include <linux/pinctrl/consumer.h>
-
 #include "core.h"
 
 #include <mach/utils.h>
@@ -152,6 +151,7 @@ struct oxnas_pinctrl {
 	struct oxnas_pin_group	*groups;
 	int			ngroups;
 };
+
 
 static const inline struct oxnas_pin_group *oxnas_pinctrl_find_group_by_name(
 				const struct oxnas_pinctrl *info,
@@ -1404,6 +1404,9 @@ static int oxnas_gpio_probe(struct platform_device *pdev)
 	oxnas_gpio_of_irq_setup(np, oxnas_chip, irq);
 
 	dev_info(&pdev->dev, "at address %p\n", oxnas_chip->regbase);
+	if (alias_idx == 1) {
+		gpiob_regbase = oxnas_chip->regbase;
+	}
 
 	return 0;
 err:

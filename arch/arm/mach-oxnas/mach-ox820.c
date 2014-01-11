@@ -18,6 +18,8 @@
 #include <mach/utils.h>
 
 extern struct smp_operations ox820_smp_ops;
+int gpiob_regbase;
+
 
 static struct map_desc ox820_io_desc[] __initdata = {
 	{
@@ -199,8 +201,14 @@ printk(KERN_INFO "Powering down PCIe\n");
 		   (1UL << SYS_CTRL_CLK_USBDEV), SYS_CTRL_CLK_CLR_CTRL);
 #endif // CONFIG_USB || CONFIG_USB_MODULE
 }
+//#vmalloc : 0xd0800000 - 0xff000000
+//#define VMALLOC_END	         (0xE1000000)
+//#define OXNAS_HW_PA_TO_VA(x) (VMALLOC_END + (x))
+//#define GPIO_B_BASE				OXNAS_HW_PA_TO_VA(0x04100000)
+//#define GPIO_B_BASE                   0xff000000 + 0x4100000
 
-//#define GPIO_B_BASE                   OXNAS_HW_PA_TO_VA(0x04100000)
+//0x44F00000 0x44100000
+//OXNAS_HW_PA_TO_VA(0x04100000)
 //#define GPIO_B_OUTPUT_CLEAR                   (GPIO_B_BASE + 0x0018)
 //#define GPIO_B_OUTPUT_ENABLE_SET              (GPIO_B_BASE + 0x001C)
 
@@ -211,8 +219,8 @@ static void arch_poweroff(void)
     force_to_low_power();
 
     // now power down completely
-//    writel(gpio_power_off_mask, GPIO_B_OUTPUT_CLEAR);
-//    writel(gpio_power_off_mask, GPIO_B_OUTPUT_ENABLE_SET);
+    writel(gpio_power_off_mask, gpiob_regbase + 0x0018);
+    writel(gpio_power_off_mask, gpiob_regbase + 0x001c);
 }
 
 
@@ -232,7 +240,7 @@ static void __init ox820_dt_init(void)
         if (ret) {
                 pr_info("ox820_ether_init failed: %d\n", ret);
         }
-	pm_power_off = arch_poweroff;
+	 pm_power_off = arch_poweroff;
 }
 
 static void __init ox820_timer_init(void)

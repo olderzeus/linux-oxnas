@@ -4,6 +4,8 @@
 #include <linux/io.h>
 #include <mach/hardware.h>
 
+extern int gpiob_regbase;
+
 static inline void oxnas_register_clear_mask(void __iomem *p, unsigned mask)
 {
 	u32 val = readl_relaxed(p);

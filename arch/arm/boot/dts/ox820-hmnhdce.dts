@@ -57,20 +57,20 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_keys>;
 		poll-interval = <100>;
-		reset {
-			label = "reset";
+		suspend {
+			label = "suspend";
 			gpios = <&GPIOA 5 1>;
-			linux,code = <0x198>;
+			linux,code = <0xcd>;
 		};
 		power {
 			label = "power";
 			gpios = <&GPIOB 11 1>;
 			linux,code = <0x74>;
 		};
-		copy {
-			label = "copy";
+		sleep {
+			label = "sleep";
 			gpios = <&GPIOA 6 1>;
-			linux,code = <0x85>;
+			linux,code = <0x8e>;
 		};
 	};
 
@@ -104,5 +104,10 @@
 			gpios = <&GPIOA 28 0>;
 			default-state = "off";
 		};
+	};
+	gpio-poweroff {
+		compatible = "gpio-poweroff";
+		gpios = <&GPIOB 11 0>;
+		input = "true";
 	};
 };
