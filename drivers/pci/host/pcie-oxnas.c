@@ -654,6 +654,23 @@ err_free_gpio:
 	return ret;
 }
 
+static void oxnas_pcie_shutdown(struct platform_device *op)
+{
+	printk(KERN_INFO "Powering down PCIe\n");
+	// Ensure the PCIe core clock is running so register accesses work
+	writel((1UL << SYS_CTRL_CLK_PCIEA) |
+		   (1UL << SYS_CTRL_CLK_PCIEB), SYS_CTRL_CLK_SET_CTRL);
+
+	// Put core into reset and PHY into minimum power state
+	writel((1UL << SYS_CTRL_RST_PCIEA) |
+		   (1UL << SYS_CTRL_RST_PCIEB) |
+		   (1UL << SYS_CTRL_RST_PCIEPHY), SYS_CTRL_RST_SET_CTRL);
+
+	// Stop clock
+	writel((1UL << SYS_CTRL_CLK_PCIEA) |
+		   (1UL << SYS_CTRL_CLK_PCIEB), SYS_CTRL_CLK_CLR_CTRL);
+}
+
 static const struct of_device_id oxnas_pcie_of_match_table[] = {
 	{ .compatible = "plxtech,nas782x-pcie", },
 	{},
@@ -667,6 +684,7 @@ static struct platform_driver oxnas_pcie_driver = {
 		.of_match_table =
 		   of_match_ptr(oxnas_pcie_of_match_table),
 	},
+	.shutdown	= oxnas_pcie_shutdown,
 };
 
 static int __init oxnas_pcie_init(void)

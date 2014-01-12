@@ -107,7 +107,6 @@
 	};
 	gpio-poweroff {
 		compatible = "gpio-poweroff";
-		gpios = <&GPIOB 11 0>;
-		input = "true";
+		gpios = <&GPIOB 16 1>;
 	};
 };

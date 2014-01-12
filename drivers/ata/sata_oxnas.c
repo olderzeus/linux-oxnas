@@ -1924,6 +1924,20 @@ static int sata_oxnas_resume(struct platform_device *op)
 }
 #endif
 
+static void sata_oxnas_shutdown(struct platform_device *op)
+{
+	printk(KERN_INFO "Powering down SATA\n");
+	// Ensure the SATA core clock is running so register accesses work
+	writel((1UL << SYS_CTRL_CLK_SATA), SYS_CTRL_CLK_SET_CTRL);
+
+	// Put core into reset and PHY into minimum power state
+	writel((1UL << SYS_CTRL_RST_SATA) |
+		   (1UL << SYS_CTRL_RST_SATA_LINK) |
+		   (1UL << SYS_CTRL_RST_SATA_PHY), SYS_CTRL_RST_SET_CTRL);
+
+	// Stop clock
+	writel((1UL << SYS_CTRL_CLK_SATA), SYS_CTRL_CLK_CLR_CTRL);
+}
 
 
 static struct of_device_id oxnas_sata_match[] = {
@@ -1943,6 +1957,7 @@ static struct platform_driver oxnas_sata_driver = {
 	},
 	.probe		= sata_oxnas_probe,
 	.remove		= sata_oxnas_remove,
+	.shutdown	= sata_oxnas_shutdown,
 #ifdef CONFIG_PM
 	.suspend	= sata_oxnas_suspend,
 	.resume		= sata_oxnas_resume,

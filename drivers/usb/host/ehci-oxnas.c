@@ -270,6 +270,33 @@ static int ehci_oxnas_drv_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void oxnas_ehci_shutdown(struct platform_device *op)
+{
+	printk(KERN_INFO "Powering down USB\n");
+
+	usb_hcd_platform_shutdown(op);
+
+	// Ensure the USB host and device core clocks are running so register accesses work
+	writel((1UL << SYS_CTRL_CLK_USBHS) |
+		   (1UL << SYS_CTRL_CLK_USBDEV), SYS_CTRL_CLK_SET_CTRL);
+
+	// Put PHY into minimum power state
+	writel((1UL << USBHSPHY_SUSPENDM_MANUAL_ENABLE) |
+		   (1UL << USBHSPHY_SUSPENDM_MANUAL_STATE) |
+		   (1UL << USBHSPHY_ATE_ESET), SYS_CTRL_USBHSPHY_CTRL); 
+
+	// Put core into reset
+	writel((1UL << SYS_CTRL_RST_USBHS) |
+		   (1UL << SYS_CTRL_RST_USBHSPHYA) |
+		   (1UL << SYS_CTRL_RST_USBHSPHYB) |
+		   (1UL << SYS_CTRL_RST_USBDEV), SYS_CTRL_RST_SET_CTRL);
+
+	// Stop clock
+	writel((1UL << SYS_CTRL_CLK_USBHS) |
+		   (1UL << SYS_CTRL_CLK_USBDEV), SYS_CTRL_CLK_CLR_CTRL);
+}
+
+
 static const struct of_device_id oxnas_ehci_dt_ids[] = {
 	{ .compatible = "plxtch,nas782x-ehci" },
 	{ /* sentinel */ }
@@ -280,7 +307,8 @@ MODULE_DEVICE_TABLE(of, oxnas_ehci_dt_ids);
 static struct platform_driver ehci_oxnas_driver = {
 	.probe		= ehci_oxnas_drv_probe,
 	.remove		= ehci_oxnas_drv_remove,
-	.shutdown	= usb_hcd_platform_shutdown,
+	//.shutdown	= usb_hcd_platform_shutdown,
+	.shutdown	= oxnas_ehci_shutdown,
 	.driver.name	= "oxnas-ehci",
 	.driver.of_match_table	= oxnas_ehci_dt_ids,
 };

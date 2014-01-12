@@ -1404,10 +1404,6 @@ static int oxnas_gpio_probe(struct platform_device *pdev)
 	oxnas_gpio_of_irq_setup(np, oxnas_chip, irq);
 
 	dev_info(&pdev->dev, "at address %p\n", oxnas_chip->regbase);
-	if (alias_idx == 1) {
-		gpiob_regbase = oxnas_chip->regbase;
-	}
-
 	return 0;
 err:
 	dev_err(&pdev->dev, "Failure %i for GPIO %i\n", ret, alias_idx);
